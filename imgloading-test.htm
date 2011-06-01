@@ -1,0 +1,58 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>RB Framework test - Sigcreator case</title>
+
+<style type="text/css">
+canvas{
+	border:1px solid black;
+}
+</style>
+</head>
+<body>
+<div id="log"></div>
+<center>
+<canvas id="c" width="540" height="96"></canvas>
+</center>
+<a href="#" onclick="newBall();">new ball</a>
+<script type="text/javascript" src="ragaboom.js"></script>
+<script type="text/javascript">
+
+var c = RB.el('c');
+
+if(!RB.canvasSupport(c)){
+	alert("your browser does not support the canvas tag. Sorry about that :(");
+}
+
+var sceneCtx = c.getContext('2d');
+var sc = new RB.Scene(c);
+var o1;
+var url = "btn_alerta_verde.png";
+var url2 = "btn_alerta_vermelho.png";
+var space = 0;
+
+sc.rect(540, 96, 'silver', 'bg');
+var bg = new RB.Obj( RB.el('bg'), sceneCtx );
+sc.add(bg);
+bg.draw();
+
+RB.rtImage(url2, 'vermelho');
+RB.rtImage(url, 'verde', function(){
+	o1 = new RB.Obj( RB.el('vermelho'), sceneCtx );
+	o1.setDraggable(true);
+	sc.add(o1);
+	o1.draw();
+});
+
+function newBall(){
+	var o = o1.clone();
+	o.setX(space += 22);
+	sc.add(o);
+	o.draw();
+}
+
+</script>
+
+</body>
+</html>

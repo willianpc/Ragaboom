@@ -1,0 +1,84 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>RB Framework - collision test 2</title>
+</head>
+<body>
+<center>
+<canvas id="c" width="500" height="300"></canvas>
+</center>
+
+<script type="text/javascript" src="ragaboom.js"></script>
+<script type="text/javascript">
+
+var c = RB.el('c');
+var ctx = c.getContext('2d');
+var scene = new RB.Scene(c);
+
+scene.rect(500, 300, 'silver', 'bg');
+scene.rect(10, 10, 'gray', 'box');
+scene.rect(30, 30, 'green', 'toon');
+
+var bg = scene.add( new RB.Obj('bg', ctx) );
+
+var box1 = new RB.Obj('box', ctx, 270, 50);
+box1.setCollidable(true);
+box1.setObstacle(true);
+scene.add(box1);
+
+var box2 = box1.clone();
+box2.setXY(75, 100);
+scene.add(box2);
+
+var box3 = box1.clone();
+box3.setXY(400, 129);
+scene.add(box3);
+
+var box4 = box1.clone();
+box4.setXY(200, 200);
+scene.add(box4);
+
+var toon = new RB.Obj('toon', ctx, 240, 280);
+toon.setCollidable(true);
+toon.setSpeed(5);
+
+scene.add(toon);
+
+scene.onkeydown = function(event){
+	var k = event.keyCode;
+	
+	switch(k){
+	case 37:
+		if(!toon.isColliding() || !toon.getCollidingCoords().left){
+			toon.left();
+			toon.draw();
+		}
+		break;
+	case 38:
+		if(!toon.isColliding() || !toon.getCollidingCoords().top){
+			toon.up();
+			toon.draw();
+		}
+		break;
+	case 39:
+		if(!toon.isColliding() || !toon.getCollidingCoords().right){
+			toon.right();
+			toon.draw();
+		}
+		break;
+	case 40:
+		if(!toon.isColliding() || !toon.getCollidingCoords().bottom){
+			toon.down();
+			toon.draw();
+		}
+		break;
+	}
+	scene.runOnce();
+}
+
+scene.update();
+
+</script>
+</body>
+</html>
