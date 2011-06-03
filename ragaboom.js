@@ -300,16 +300,20 @@ RB.Scene = function(canvasObj) {
 		//check if that id already exists
 		//if so doesnt create a new canvas
 		var c = RB.el(id);
+		var ctx;
+		
 		if(!c){
 			c = RB.createCanvas(tb.offsetWidth, tb.offsetHeight + 15, id);
+			ctx = c.getContext('2d');
 		} else {
 			//if already existed, clear and rezise the canvas
-			c.getContext('2d').clearRect(0, 0, tb.offsetWidth, tb.offsetHeight + 15);
+			ctx = c.getContext('2d');
+			
 			c.width = tb.offsetWidth;
 			c.height = tb.offsetHeight + 15;
+			ctx.clearRect(0, 0, tb.offsetWidth, tb.offsetHeight + 15);
 		}
 
-		var ctx = c.getContext('2d');
 		ctx.fillStyle = RB.getFS(fillStyle, ctx, tb.offsetHeight + 25);
 		ctx.font = 'normal ' + fontSize + 'px ' + fontFamily;
 		ctx.fillText(str, 0, tb.offsetHeight + 5);
@@ -338,9 +342,9 @@ RB.Scene = function(canvasObj) {
 		for (var i = 0; i < objectLen; i++) {
 			var otmp = objects[i];
 			
-			if(otmp.isVisible()){
+			if(otmp.isVisible()) {
 				otmp.run();
-			}else{
+			} else {
 				continue;
 			}
 
@@ -353,7 +357,6 @@ RB.Scene = function(canvasObj) {
 					// object doesnt check collision with itself,
 					// so if object unique ids are the same this part is skipped
 					if (otmp.getUniqueId() != o.getUniqueId()) {
-						//var colCheck = o.checkCollision(otmp);
 						var colCheck = otmp.checkCollision(o);
 
 						if (colCheck.top || colCheck.bottom || colCheck.left || colCheck.right) {
@@ -373,11 +376,9 @@ RB.Scene = function(canvasObj) {
 	};
 
 	this.animate = function() {
-
 		this.runOnce();
 		
-		//global operation that is executed
-		//every loop
+		//global operation that is executed every loop
 		this.onLoop();
 
 		if (isStarted) {
@@ -490,6 +491,7 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 
 	/* setters and getters */
 	this.setCanvas = function(p) {
+	
 		canvas = (typeof p == 'object' ? p : RB.el(p));
 
 		w = canvas.width;
