@@ -28,13 +28,19 @@ THE SOFTWARE.
 var RB = {};
 
 // instantiates the RB.scene object
-RB.Scene = function(canvasObj) {
+RB.Scene = function(canvasObj, loopTime) {
 	
 	if(!canvasObj){
 		throw "RB.Scene(canvasObject): You must specify a canvas object";
 	}
 	
+	if(!loopTime){
+		loopTime = 24;
+	}
+	
+	var timeInterval = loopTime;
 	var c = canvasObj;
+	var d = document;
 	var w = c.width;
 	var h = c.height;
 	this.ctx = c.getContext('2d');
@@ -63,6 +69,14 @@ RB.Scene = function(canvasObj) {
 
 	// number of loaded images which are attached to the scene
 	var imgCounter = 0;
+	
+	this.setLoopTime = function(p){
+		timeInterval = p;
+	};
+	
+	this.getLoopTime = function(){
+		return timeInterval;
+	};
 
 	// attaches the object to the scene object
 	this.add = function(o) {
@@ -147,26 +161,68 @@ RB.Scene = function(canvasObj) {
 		draggableObjects.splice(0, doLen);
 	};
 	
-	//registers canvas events
-	var theScene = this;
-	c.onmousemove = function(e){theScene.mouseMove(e); theScene.onmousemove(e);};
-	c.onmousedown = function(e){theScene.canvasOnmousedown(e);};
-	c.onmouseup = function(e){mouseIsDown = false;};
-	
-	document.onkeydown = function(e){
-		//theScene.runOnce();
-		theScene.onkeydown(e);
+	this.zIndex = function(o, index){
+		var oLen = objects.length;
+		var currIndex = getIdByObject(o);
+		var newIndex = currIndex + index;
+		
+		if(newIndex < 0){
+			newIndex = 0;
+		}
+		if(newIndex >= oLen){
+			newIndex = oLen-1;
+		}
+		
+		//saves a copy of the object
+		var tmp = objects[currIndex];
+		objects[currIndex] = objects[newIndex];
+		objects[newIndex] = tmp;
 	};
 	
-	document.onkeyup = function(e){
-		//theScene.runOnce();
-		theScene.onkeyup(e);
+	//returns an object from the oject array by its id
+	getObjectById = function(id){
+		var oLen = objects.length;
+		for(var i=0; i < oLen; i++){
+			if(objects[i].getUniqueId() == id){
+				return o;
+			}
+		}
+		return null;
+	};
+	
+	//returns an object id from the oject
+	getIdByObject = function(ob){
+		var oLen = objects.length;
+		for(var i=0; i < oLen; i++){
+			if(objects[i].getUniqueId() == ob.getUniqueId()){
+				return i;
+			}
+		}
+		return null;
 	};
 	
 	this.onmousemove = function(e){};
+	this.onmousedown = function(e){};
+	this.onmouseup = function(e){};
+	this.onkeydown = function(e){};
+	this.onkeyup = function(e){};
+	
+	//registers canvas events
+	var theScene = this;
+	c.onmousemove = function(e){mouseMove(e); theScene.onmousemove(e);};
+	c.onmousedown = function(e){mousedown(e); theScene.onmousedown(e);};
+	c.onmouseup = function(e){mouseIsDown = false; theScene.onmouseup(e);};
+	
+	d.onkeydown = function(e){
+		theScene.onkeydown(e);
+	};
+	
+	d.onkeyup = function(e){
+		theScene.onkeyup(e);
+	};
 	
 	//event methods
-	this.mouseMove = function(event, fn){
+	mouseMove = function(event){
 		if(mouseIsDown && currentObject) {
 			currentObject.setX(RB.xPos(event) - dX);
 			currentObject.setY(RB.yPos(event) - dY);
@@ -178,18 +234,15 @@ RB.Scene = function(canvasObj) {
 			 * is called.  
 			 */
 			if(!isStarted){
-				this.update();
-				//this.runOnce() ???
+				theScene.update();
 			}
 		}
-		
-		if(fn)fn();
 	};
 	
-	this.canvasOnmousedown = function(event, fn){
-		var doLen = draggableObjects.length;
+	mousedown = function(event){
+		var doLen = draggableObjects.length-1;
 
-		for(var i=0; i < doLen; i++){
+		for(var i=doLen; i >= 0; i--){
 			var o = draggableObjects[i];
 
 			if( o.checkRange(RB.xPos(event), RB.yPos(event)) ){
@@ -202,12 +255,8 @@ RB.Scene = function(canvasObj) {
 				break;
 			}
 		}
-		if(fn)fn();
 	};
 	
-	this.onkeydown = function(event){};
-	this.onkeyup = function(event){};
-
 	this.getObjectSize = function() {
 		return objects.length;
 	};
@@ -222,14 +271,17 @@ RB.Scene = function(canvasObj) {
 		var ctx = c.getContext('2d');
 		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
 		ctx.fillRect(0, 0, w, h);
+		
+		return c;
 	};
 
 	// load an image inside a buffer canvas
 	this.image = function(url, id) {
 		var img = new Image();
 		var theScene = this;
+		var c = null;
 		img.onload = function() {
-			var c = RB.createCanvas(img.width, img.height, id);
+			c = RB.createCanvas(img.width, img.height, id);
 			var ctx = c.getContext('2d');
 			ctx.drawImage(this, 0, 0);
 
@@ -288,11 +340,14 @@ RB.Scene = function(canvasObj) {
 		ctx.closePath();
 		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
 		ctx.fill();
+		
+		return c;
 	};
 
 	// draws a text inside a buffer canvas
 	this.text = function(str, fontFamily, fontSize, fillStyle, id) {
 		var tb = RB.getTextBuffer();
+		
 		tb.innerHTML = str;
 		tb.style.fontFamily = fontFamily;
 		tb.style.fontSize = fontSize + 'px';
@@ -317,6 +372,8 @@ RB.Scene = function(canvasObj) {
 		ctx.fillStyle = RB.getFS(fillStyle, ctx, tb.offsetHeight + 25);
 		ctx.font = 'normal ' + fontSize + 'px ' + fontFamily;
 		ctx.fillText(str, 0, tb.offsetHeight + 5);
+		
+		return c;
 	};
 
 	this.start = function() {
@@ -357,7 +414,7 @@ RB.Scene = function(canvasObj) {
 					// object doesnt check collision with itself,
 					// so if object unique ids are the same this part is skipped
 					if (otmp.getUniqueId() != o.getUniqueId()) {
-						var colCheck = otmp.checkCollision(o);
+						var colCheck = otmp.checkCollision(o, true);
 
 						if (colCheck.top || colCheck.bottom || colCheck.left || colCheck.right) {
 							otmp.setIsColliding(true);
@@ -385,7 +442,7 @@ RB.Scene = function(canvasObj) {
 			var theScene = this;
 			setTimeout(function() {
 				theScene.animate();
-			}, 24);
+			}, timeInterval);
 		}
 	};
 	
@@ -404,6 +461,7 @@ RB.Scene = function(canvasObj) {
 	this.getW = function() {
 		return w;
 	};
+	
 	this.getH = function() {
 		return h;
 	};
@@ -460,12 +518,6 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	
 	var draggable = false;
 
-	/*
-	 * x and y end position from objeto. 
-	 * The objects starts in x, y and ends at x2, y2
-	 */
-	var x2 = 0, y2 = 0;
-
 	var speedX = 1;
 	var speedY = 1;
 
@@ -474,7 +526,7 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	// array containing list of sprites for object animation
 	var sprites = null;
 
-	// number of loops before to change sprite image
+	// number of loops before changing sprite image
 	var spriteChangeInterval = 1;
 	this.setSpriteInterval = function(p) {
 		spriteChangeInterval = p;
@@ -491,13 +543,10 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 
 	/* setters and getters */
 	this.setCanvas = function(p) {
-	
 		canvas = (typeof p == 'object' ? p : RB.el(p));
 
 		w = canvas.width;
 		h = canvas.height;
-		x2 = x + w;
-		y2 = y + h;
 	};
 	
 	this.setCoords = function(_x, _y){
@@ -635,19 +684,15 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	};
 
 	this.getX2 = function() {
-		return x2;
+		return x+w;
 	};
 	
 	this.getY2 = function() {
-		return y2;
+		return y+h;
 	};
 	
 	this.setVisible = function(p){visible=p;};
 	this.isVisible = function(){return visible;};
-
-	this.ds = function() {
-		return name + ': x=' + x + ', y=' + y + ', w=' + w + ', h=' + h;
-	};
 
 	this.fn = function() {
 		this.draw();
@@ -687,26 +732,26 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	};
 
 	// moves the object up
-	this.up = function() {
-		y -= speedY;
+	this.up = function(p) {
+		y -= p || speedY;
 		lastDirection = 'up';
 	};
 
 	// moves the object down
-	this.down = function() {
-		y += speedY;
+	this.down = function(p) {
+		y += p || speedY;
 		lastDirection = 'down';
 	};
 
 	// moves the object to left
-	this.left = function() {
-		x -= speedX;
+	this.left = function(p) {
+		x -= p || speedX;
 		lastDirection = 'left';
 	};
 
 	// moves the object to right
-	this.right = function() {
-		x += speedX;
+	this.right = function(p) {
+		x += p || speedX;
 		lastDirection = 'right';
 	};
 
@@ -732,16 +777,18 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 		}
 	};
 
-	/*
-	 * This method checks if the object is being hit by another object above it.
-	 * baseY is the base of the object whos checking for collisions.
-	 * initPt and endPt are the the width of the object whos checking for collisions.
-	 */
-	this.checkCollision = function(otherObj) {
+	this.checkCollision = function(otherObj, predict) {
 		var x1 = otherObj.getX();
 		var y1 = otherObj.getY();
-		var x2 = otherObj.getX() + otherObj.getW();
-		var y2 = otherObj.getY() + otherObj.getH();
+		var x2 = otherObj.getX2();
+		var y2 = otherObj.getY2();
+		
+		if(predict){
+			x1 -= speedX;
+			y1 -= speedY;
+			x2 -= speedX;
+			y2 -= speedY;
+		}
 		
 		var collisions = {
 			top: false,
@@ -816,7 +863,8 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 // this is the div responsible to calculate canvas dimensions
 // for a text painted
 RB.createTextBuffer = function() {
-	var txtBuffer = document.createElement("div");
+	var d = document;
+	var txtBuffer = d.createElement("div");
 
 	txtBuffer.id = 'txtBuffer';
 	txtBuffer.style.position = 'absolute';
@@ -825,7 +873,7 @@ RB.createTextBuffer = function() {
 	txtBuffer.style.padding = '0px';
 	txtBuffer.style.visibility = 'hidden';
 
-	document.body.appendChild(txtBuffer);
+	d.body.appendChild(txtBuffer);
 };
 
 // returns the div txtBuffer.
@@ -837,15 +885,36 @@ RB.getTextBuffer = function() {
 	return RB.el('txtBuffer');
 };
 
-// creates a new buffer canvas
+/*
+specifies a dom element where all canvas objects
+will be stored.
+if this parameter is not set, all objects will be stored
+in the document.body 
+ */
+RB.createCanvasLocation = null;
+
+//creates a new buffer canvas
 RB.createCanvas = function(w, h, id) {
-	var c = document.createElement("canvas");
+	var d = document;
+	var c = d.createElement("canvas");
 	c.width = w;
 	c.height = h;
 	c.id = id;
 	c.style.display = "none";
-	document.body.appendChild(c);
+	
+	if(RB.createCanvasLocation){
+		RB.createCanvasLocation.appendChild(c);
+	} else {
+		d.body.appendChild(c);
+	}
+	
 	return c;
+};
+
+RB.destroyCanvas = function(id){
+	var d = document;
+	var o = d.getElementById(id);
+	d.body.removeChild(o);
 };
 
 // returns a div element
@@ -888,7 +957,7 @@ RB.rtImage = function(url, id, fn) {
 		ctx.drawImage(this, 0, 0);
 
 		if (fn)
-			fn();
+			fn(c);
 	};
 	img.src = url;
 };
