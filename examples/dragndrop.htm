@@ -1,0 +1,44 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>drag n drop example</title>
+
+<style type="text/css">
+canvas{
+	border:1px solid black;
+}
+</style>
+</head>
+<body>
+
+<center>
+<canvas id="c" width="400" height="400"></canvas>
+</center>
+
+<script type="text/javascript" src="../ragaboom.min.js"></script>
+<script type="text/javascript">
+//main canvas and context
+var c = RB.el('c');
+var ctx = c.getContext('2d');
+var sc = new RB.Scene(c);
+
+//silver background
+var canvasBg = sc.rect(400, 400, 'silver', 'bg');
+var bgObj = new RB.Obj(canvasBg, ctx);
+
+//draggable square
+var canvasSq = sc.roundRect(40, 40, 5, 'gray', 'sq');
+var sqObj = new RB.Obj(canvasSq, ctx);
+sqObj.setDraggable(true);
+
+//add objects to the scene
+sc.add(bgObj);
+sc.add(sqObj);
+
+
+sc.update();
+</script>
+
+</body>
+</html>
