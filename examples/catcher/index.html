@@ -1,0 +1,249 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>CATcher</title>
+
+<style type="text/css">
+canvas{
+	border:1px solid black;
+}
+</style>
+</head>
+<body>
+<center>
+<div id="ld">loading...</div>
+<a id="lnkStart" style="display:none" href="javascript:startGame();">start</a>
+<canvas id="c" width="640" height="480">
+	Sorry, your browser doesn't support HTML5 Canvas
+</canvas>
+</center>
+
+<script type="text/javascript" src="../../ragaboom.js"></script>
+<script type="text/javascript" src="catcher.js"></script>
+
+<script type="text/javascript">
+cs();
+
+//instantiates the scene
+var sc = new RB.Scene(c, 24);
+
+//time left to play
+var timeLeft = 30000;
+var secondCount = 0;
+var userScore = 0;
+var nextCeil = 100;
+
+var txtColor = { h: 30, colors:[ {stopPoint: 0.2, name: 'cyan'}, {stopPoint: 1, name: 'navy'} ] };
+var textStyle = { h: 30, colors:[ {stopPoint: 0.4, name: 'yellow'}, {stopPoint: 1, name: 'red'} ] };
+var headerColor = { h: 60, colors:[ {stopPoint: 0, name: 'rgb(170, 220, 251)'}, {stopPoint: 0.95, name: 'rgb(86, 110, 124)'} ] };
+var fontFamily = "Arial, helvetica";
+
+//buffering images
+sc.image('cat1.png', 'cat1');
+sc.image('cat2.png', 'cat2');
+sc.image('cat3.png', 'cat3');
+sc.image('bg.png', 'bg');
+sc.image('basket.png', 'basket');
+
+for(var i=1; i < 10; i++){
+	sc.text(i, fontFamily, 40, 'green', 'fp_' + i);
+}
+
+var gt_ = sc.text('Catcher', fontFamily, 45, txtColor, 'gameTitle');
+var ins_ = sc.text('Instructions', 'arial, helvetica', 25, 'orange', 'txtInstructions');
+var ins1_ = sc.text('- Try to catch as many kitties as possible', 'arial, helvetica', 15, 'black', 'txtins1');
+var ins2_ = sc.text('- Faster kitties give more points', 'arial, helvetica', 15, 'black', 'txtins2');
+var ins3_ = sc.text('- Every 100 points you reach you earn 15 more seconds to play', 'arial, helvetica', 15, 'black', 'txtins3');
+var time_ = sc.text('Time', fontFamily, 15, 'black', 'timetxt');
+var score_ = sc.text('Score', fontFamily, 15, 'black', 'scoretxt');
+var thescore_ = sc.text('0', fontFamily, 20, textStyle, 'theScore');
+var thetime_ = sc.text('00:30', fontFamily, 20, textStyle, 'theTime');
+
+var ws_ = sc.roundRect(500, 230, 10, 'white', 'welcomeScreen');
+var sheader_ = sc.rect(640, 60, headerColor, 'sHeader');
+
+//create objects
+var baseCat = null;
+var bg = null;
+var basket = null;
+var gameTitle = null;
+var welcomeScreen = null;
+var txtins1, txtins2, txtins3, txtInstructions;
+var catAnim;
+var sHeader;
+var timetxt, scoretxt;
+var theTime, theScore;
+
+sc.doAfterLoad = function(){
+	RB.el('ld').style.display = "none";
+	RB.el('lnkStart').style.display = "block";
+	
+	//load objects
+	loadObjects();
+	showWelcomeScreen();
+};
+
+sc.onLoop = function(){
+	this.text(userScore, fontFamily, 20, textStyle, 'theScore');
+	secondCount++;
+	
+	//do something every 1 second
+	if(secondCount == ~~(1000/24)){
+		secondCount = 0;
+		timeLeft -= 1000;
+		
+		var tmpTempo = new Date(timeLeft);
+		this.text(addZero(tmpTempo.getMinutes()) + ":" + addZero(tmpTempo.getSeconds()), fontFamily, 20, textStyle, 'theTime');
+		
+		if(timeLeft <= 0){
+			var go_ = sc.text("Game over: ur score is " + userScore, 'arial', 35, 'red', 'gameover');
+			var gameover = new RB.Obj(go_, ctx, 100, 100);
+			sc.removeAll();
+			sc.add(gameover);
+			sc.stop();
+			sc.update();
+		}
+	}
+}
+
+function loadObjects(){
+	
+	//cat animation
+	catAnim = new Array(RB.el('cat1'), RB.el('cat2'), RB.el('cat3'), RB.el('cat2'));
+	
+	bg = new RB.Obj('bg', ctx);
+	
+	basket = new RB.Obj('basket', ctx, null, 450);
+	basket.collidable = true;
+	basket.obstacle = true;
+	
+	gameTitle = new RB.Obj(gt_, ctx, 100, 50);
+	
+	welcomeScreen = new RB.Obj(ws_, ctx);
+	welcomeScreen.setCoords((c.width/2)-(welcomeScreen.w/2), 50);
+	
+	txtins1 = new RB.Obj(ins1_, ctx, 120, 160);
+	txtins2 = new RB.Obj(ins2_, ctx, 120, 180);
+	txtins3 = new RB.Obj(ins3_, ctx, 120, 200);
+	txtInstructions = new RB.Obj(ins_, ctx, 120, 120);
+
+	sHeader = new RB.Obj(sheader_, ctx);
+	
+	timetxt = new RB.Obj(time_, ctx, 10, -2);
+	scoretxt = new RB.Obj(score_, ctx, 500, -2);
+	theScore = new RB.Obj(thescore_, ctx, 510, 10);
+	theTime = new RB.Obj(thetime_, ctx, 20, 10);
+	
+	sc.addLots([bg, welcomeScreen, gameTitle, txtInstructions, txtins1, txtins2, txtins3]);
+}
+
+function showWelcomeScreen(){
+	sc.update();
+}
+
+var fpts = new Array(11);
+
+function startGame(){
+	sc.removeLots([welcomeScreen, gameTitle, txtInstructions, txtins1, txtins2, txtins3]);
+	sc.add(basket);
+	
+	var gap = -76;
+	
+	for(var i=0; i < 11; i++){
+		gap+=80;
+	
+		var basefp = new RB.Obj('fp_1', ctx, null, 400);
+		basefp.speedY = 3;
+		basefp.x = gap+28;
+		basefp.visible = false;
+
+		basefp.fn = function(){
+			this.up();
+			this.draw();
+		
+			if(this.y <= 350){
+				this.y = 400;
+				this.visible = false;
+			}
+		}
+		fpts[i] = basefp;
+		sc.add(basefp);
+	
+		baseCat = new RB.Obj('cat1', ctx);
+		baseCat.setSprites(catAnim, 5);
+		baseCat.y = -50;
+		baseCat.x = gap;
+		baseCat.speedY = rnd();
+		baseCat.collidable = true;
+		baseCat.newId = i;
+	
+		baseCat.fn = function(){
+		
+			this.animateSprite(function(){});
+		
+			if( !this.colliding ){
+				this.down();
+			} else {
+				//checa se o corpo do gato esta totalmente dentro da cesta
+			
+				if(this.x >= basket.x && this.getX2() <= basket.getX2()){
+			
+					//floating point
+					fpts[this.newId].visible = true;
+					fpts[this.newId].setCanvas('fp_' + this.speedY);
+					
+					//cat was caught!
+					userScore += this.speedY;
+					this.speedY = rnd();
+					this.y = -60;
+				
+					//se usuario fez + 100 pontos, ganha 15 segundos
+					if(userScore >= nextCeil){
+						nextCeil+=100;
+						timeLeft += 15000;
+					}
+				
+				} else {
+					this.down();
+				}
+			}
+		
+			this.draw();
+		
+			if(this.y > 500){
+				this.y = -50;
+				this.speedY = rnd();
+			}
+		};
+		sc.add(baseCat);
+	}
+
+	sc.addLots([sHeader, timetxt, scoretxt, theScore, theTime]);
+	//sc.zIndex(sHeader, 1);
+	sc.start();
+}
+
+sc.onmousemove = function(event){
+	basket.x = ( RB.xPos(event) - (basket.w/2) );
+	
+	if(basket.x < 0) basket.x=0;
+	
+	if(basket.getX2() > c.width){
+		basket.x = ( c.width - basket.w );
+	}
+}
+
+function rnd(){
+	var speed = ~~(Math.random()*9);
+	return speed==0 ? 1 : speed;
+}
+
+function addZero(n){
+	if(n < 10) return '0' + n; 
+
+	return n;
+}
+</script>
+</body>
+</html>

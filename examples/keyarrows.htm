@@ -1,0 +1,63 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
+<title>moving an object arroy keys</title>
+
+<style type="text/css">
+canvas{
+	border:1px solid black;
+	font-family:'times';
+	font-size:30px;
+}
+
+</style>
+</head>
+<body>
+
+<center>
+<canvas id="c" width="400" height="400"></canvas>
+</center>
+
+<a href="#" onclick="sc.toggleStart();">stop/start</a>
+
+<script type="text/javascript" src="../ragaboom.js"></script>
+<script type="text/javascript">
+var c = RB.el('c');
+var ctx = c.getContext('2d');
+var sc = new RB.Scene(c);
+
+var bg_ = sc.rect(400, 400, 'black', 'bg');
+var toon_ = sc.rect(30, 30, 'maroon', 'toon');
+var obstacle = sc.rect(30, 300, 'gray', 'obstacle');
+
+var bg = new RB.Obj(bg_, ctx);
+var toon = new RB.Obj(toon_, ctx);
+toon.setSpeed(5);
+toon.collidable=true;
+
+var o1 = new RB.Obj(obstacle, ctx, 50, 50);
+o1.collidable=true;
+o1.obstacle=true;
+
+var o2 = new RB.Obj(obstacle, ctx, 350, 50);
+o2.collidable=true;
+o2.obstacle=true;
+
+var o3 = new RB.Obj(obstacle, ctx, 50, 50);
+o3.collidable=true;
+o3.obstacle=true;
+
+var o4 = new RB.Obj(obstacle, ctx, 350, 350);
+o4.collidable=true;
+o4.obstacle=true;
+
+//sc.addLots([bg, o1, o2, o3, o4, toon]);
+sc.addLots([bg, o3, toon]);
+sc.setMovableObject(toon.getId());
+sc.start();
+
+</script>
+
+</body>
+</html>

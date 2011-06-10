@@ -3,6 +3,7 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=ISO-8859-1">
 <title>RB Framework - collision test 2</title>
+<!--[if IE]><script type="text/javascript" src="excanvas.compiled.js"></script><![endif]-->
 </head>
 <body>
 <center>
@@ -14,67 +15,105 @@
 
 var c = RB.el('c');
 var ctx = c.getContext('2d');
-var scene = new RB.Scene(c);
+var scene = new RB.Scene(c, 24);
 
 scene.rect(500, 300, 'silver', 'bg');
-scene.rect(10, 10, 'gray', 'box');
+var b1_ = scene.roundRect(500, 20, 5, 'gray', 'box1');
+var b2_ = scene.roundRect(100, 200, 5, 'rgb(100, 100, 100)', 'box2');
+var b3_ = scene.roundRect(100, 100, 5, 'gray', 'box3');
+var b4_ = scene.roundRect(300, 20, 5, 'gray', 'box4');
 scene.rect(30, 30, 'green', 'toon');
 
 var bg = scene.add( new RB.Obj('bg', ctx) );
 
-var box1 = new RB.Obj('box', ctx, 270, 50);
-box1.setCollidable(true);
-box1.setObstacle(true);
+var box1 = new RB.Obj(b1_, ctx, 0, 280);
+box1.collidable=(true);
+box1.obstacle=(true);
 scene.add(box1);
 
-var box2 = box1.clone();
-box2.setXY(75, 100);
+var box2 = new RB.Obj(b2_, ctx, 270, 100);
+box2.collidable=(true);
+box2.obstacle=(true);
+box2.draggable=(true);
 scene.add(box2);
 
-var box3 = box1.clone();
-box3.setXY(400, 129);
+var box3 = new RB.Obj(b3_, ctx, 100, 50);
+box3.collidable=(true);
+box3.obstacle=(true);
 scene.add(box3);
 
-var box4 = box1.clone();
-box4.setXY(200, 200);
+var box4 = new RB.Obj(b4_, ctx, 270, 50);
+box4.collidable=(true);
+box4.obstacle=(true);
 scene.add(box4);
 
-var toon = new RB.Obj('toon', ctx, 240, 280);
-toon.setCollidable(true);
+var toon = new RB.Obj('toon', ctx, 20, 20);
+toon.collidable=(true);
 toon.setSpeed(5);
 
 scene.add(toon);
 
+var keyIsDown = false;
+
+scene.onkeyup = function(){
+	keyIsDown = false;
+}
+
 scene.onkeydown = function(event){
+	if(!keyIsDown){
+		keyIsDown = true;
+		move(event);
+	}
+
+}
+
+function move(event){
 	var k = event.keyCode;
+	var col = toon.colliding;
+	var coords = toon.collidingCoords;
 	
 	switch(k){
 	case 37:
-		if(!toon.isColliding() || !toon.getCollidingCoords().left){
+		if(!col || !coords.left){
 			toon.left();
-			toon.draw();
+		} else {
+			//toon.right();
 		}
+		toon.draw();
 		break;
 	case 38:
-		if(!toon.isColliding() || !toon.getCollidingCoords().top){
+		if(!col || !coords.top){
 			toon.up();
-			toon.draw();
+		} else {
+			//toon.down();
 		}
+		toon.draw();
+		
 		break;
 	case 39:
-		if(!toon.isColliding() || !toon.getCollidingCoords().right){
+		if(!col || !coords.right){
 			toon.right();
-			toon.draw();
+		} else {
+			//toon.left();
 		}
+		toon.draw();
 		break;
 	case 40:
-		if(!toon.isColliding() || !toon.getCollidingCoords().bottom){
+		if(!col || !coords.bottom){
 			toon.down();
-			toon.draw();
+		} else {
+			//toon.up();
 		}
+		toon.draw();
 		break;
 	}
 	scene.runOnce();
+	
+	if(keyIsDown){
+		setTimeout(function(){
+			move(event);
+			}, 24);
+	}
 }
 
 scene.update();

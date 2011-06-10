@@ -1,4 +1,6 @@
 /*
+Ragaboom Framework by Chambs o.chambs@gmail.com
+
 Copyright (C) 2011 by Willian Carvalho
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -20,14 +22,8 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 */
 
-/*
- * ragaboom framework by chambs o.chambs@gmail.com
- */
-
-//namespace
 var RB = {};
 
-// instantiates the RB.scene object
 RB.Scene = function(canvasObj, loopTime) {
 	
 	if(!canvasObj){
@@ -38,25 +34,32 @@ RB.Scene = function(canvasObj, loopTime) {
 		loopTime = 24;
 	}
 	
-	var timeInterval = loopTime;
+	this.timeInterval = loopTime;
 	var c = canvasObj;
 	var d = document;
-	var w = c.width;
-	var h = c.height;
+	//var w = c.width;
+	//var h = c.height;
 	this.ctx = c.getContext('2d');
 	var objects = [];
+	
+	//the object that must be moved by arrow keys
+	var movableObjectId = null;
+	
+	//the keys pressed at the present moment
+	var leftP = false;
+	var rightP = false;
+	var topP = false;
+	var downP = false;
 	
 	//controls if mouse is pressed or not
 	var mouseIsDown = false;
 	
 	//the current object being dragged
 	var currentObject = null;
-	//var currentObjectIndex = -1;
 	
-	//dunno why i need em
 	var dX=0, dY=0;
 
-	// objects with collision properties
+	// collidable objects
 	var colObjects = [];
 	
 	var draggableObjects = [];
@@ -70,14 +73,6 @@ RB.Scene = function(canvasObj, loopTime) {
 	// number of loaded images which are attached to the scene
 	var imgCounter = 0;
 	
-	this.setLoopTime = function(p){
-		timeInterval = p;
-	};
-	
-	this.getLoopTime = function(){
-		return timeInterval;
-	};
-
 	// attaches the object to the scene object
 	this.add = function(o) {
 		
@@ -90,12 +85,12 @@ RB.Scene = function(canvasObj, loopTime) {
 
 		// adds the object on a separate 
 		// array if it is set to collision
-		if (o.isCollidable())
+		if (o.collidable)
 			colObjects.push(o);
 		
 		// adds the object on a separate 
 		// array if it is draggable
-		if (o.isDraggable()){
+		if (o.draggable){
 			draggableObjects.push(o);
 		}
 		
@@ -112,27 +107,27 @@ RB.Scene = function(canvasObj, loopTime) {
 	
 	//removes an object from the scene
 	this.remove = function(o){
-		var uid = o.getUniqueId();
+		var uid = o.getId();
 		var oLen = objects.length;
 		var doLen = draggableObjects.length;
 		var coLen = colObjects.length;
 		
 		for(var i=0; i < oLen; i++){
-			if(uid == objects[i].getUniqueId()){
+			if(uid == objects[i].getId()){
 				objects.splice(i, 1);
 				break;
 			}
 		}
 		
 		for(var i=0; i < coLen; i++){
-			if(uid == colObjects[i].getUniqueId()){
+			if(uid == colObjects[i].getId()){
 				colObjects.splice(i, 1);
 				break;
 			}
 		}
 		
 		for(var i=0; i < doLen; i++){
-			if(uid == draggableObjects[i].getUniqueId()){
+			if(uid == draggableObjects[i].getId()){
 				draggableObjects.splice(i, 1);
 				break;
 			}
@@ -183,7 +178,7 @@ RB.Scene = function(canvasObj, loopTime) {
 	getObjectById = function(id){
 		var oLen = objects.length;
 		for(var i=0; i < oLen; i++){
-			if(objects[i].getUniqueId() == id){
+			if(objects[i].getId() == id){
 				return o;
 			}
 		}
@@ -194,11 +189,46 @@ RB.Scene = function(canvasObj, loopTime) {
 	getIdByObject = function(ob){
 		var oLen = objects.length;
 		for(var i=0; i < oLen; i++){
-			if(objects[i].getUniqueId() == ob.getUniqueId()){
+			if(objects[i].getId() == ob.getId()){
 				return i;
 			}
 		}
 		return null;
+	};
+	
+	this.setMovableObject = function(p){
+		if(typeof p == 'object') {
+			movableObjectId = p.getId();
+		} else {
+			movableObjectId = p;
+		}
+	};
+	
+	this.getMovableObject = function(){
+		return getObjectById(movableObjectId);
+	};
+	
+	//gets the keys pressed. its used on the movable object
+	var getKeyDirection = function(e, b){
+		var k = e.keyCode;
+	
+		switch(k){
+			case 37:
+			leftP = b;
+			break;
+		
+			case 38:
+			topP = b;
+			break;
+		
+			case 39:
+			rightP = b;
+			break;
+		
+			case 40:
+			downP = b;
+			break;
+		}
 	};
 	
 	this.onmousemove = function(e){};
@@ -214,18 +244,20 @@ RB.Scene = function(canvasObj, loopTime) {
 	c.onmouseup = function(e){mouseIsDown = false; theScene.onmouseup(e);};
 	
 	d.onkeydown = function(e){
+		getKeyDirection(e, true);
 		theScene.onkeydown(e);
 	};
 	
 	d.onkeyup = function(e){
+		getKeyDirection(e, false);
 		theScene.onkeyup(e);
 	};
 	
 	//event methods
-	mouseMove = function(event){
+	var mouseMove = function(event){
 		if(mouseIsDown && currentObject) {
-			currentObject.setX(RB.xPos(event) - dX);
-			currentObject.setY(RB.yPos(event) - dY);
+			currentObject.x = (RB.xPos(event) - dX);
+			currentObject.y = (RB.yPos(event) - dY);
 			
 			/* if you r trying to drag something
 			 * but the scene is being animated, that should be checked first.
@@ -239,7 +271,7 @@ RB.Scene = function(canvasObj, loopTime) {
 		}
 	};
 	
-	mousedown = function(event){
+	var mousedown = function(event){
 		var doLen = draggableObjects.length-1;
 
 		for(var i=doLen; i >= 0; i--){
@@ -249,8 +281,8 @@ RB.Scene = function(canvasObj, loopTime) {
 				currentObject = o;
 				currentObjectIndex = i;
 				
-				dX = RB.xPos(event) - currentObject.getX();
-				dY = RB.yPos(event) - currentObject.getY();
+				dX = RB.xPos(event) - currentObject.x;
+				dY = RB.yPos(event) - currentObject.y;
 				mouseIsDown = true;
 				break;
 			}
@@ -395,40 +427,62 @@ RB.Scene = function(canvasObj, loopTime) {
 	//it is separated from animate method so that it can be used in other cases
 	this.runOnce = function(){
 		var objectLen = objects.length;
+		var colObjectsLen = colObjects.length;
 
 		for (var i = 0; i < objectLen; i++) {
 			var otmp = objects[i];
-			
-			if(otmp.isVisible()) {
+
+			if(otmp.visible) {
 				otmp.run();
 			} else {
 				continue;
 			}
-
-			if (otmp.isCollidable() && !otmp.isObstacle()) {
-				var colObjectsLen = colObjects.length;
+			
+			if (otmp.collidable && !otmp.obstacle) {
 
 				for (var j = 0; j < colObjectsLen; j++) {
 					var o = colObjects[j];
 
 					// object doesnt check collision with itself,
 					// so if object unique ids are the same this part is skipped
-					if (otmp.getUniqueId() != o.getUniqueId()) {
+					if (otmp.getId() != o.getId()) {
 						var colCheck = otmp.checkCollision(o, true);
+						o=null;
 
 						if (colCheck.top || colCheck.bottom || colCheck.left || colCheck.right) {
-							otmp.setIsColliding(true);
-							otmp.setCollidingCoords(colCheck);
+							otmp.colliding = true;
+							otmp.collidingCoords = colCheck;
 
 							// object collided in something, so abort the loop
 							break;
 						} else {
-							otmp.setIsColliding(false);
-							otmp.setCollidingCoords(null);
+							otmp.colliding = false;
+							otmp.collidingCoords = null;
 						}
 					}
 				}
 			}
+			
+			//check if object is movable
+			var anyArrowIsPressed = leftP || rightP || downP || topP;
+			if(otmp.getId() == movableObjectId && anyArrowIsPressed){
+			
+				//check coordinate collisions
+				var lc=false, rc=false, tc=false, dc=false;
+				var cc = otmp.collidingCoords;
+				if(cc){
+					lc = cc.left;
+					rc = cc.right;
+					tc = cc.top;
+					dc = cc.bottom;
+				}
+			
+				if(leftP && !lc) otmp.left();
+				if(rightP && !rc) otmp.right();
+				if(topP && !tc) otmp.up();
+				if(downP && !dc) otmp.down();
+			}
+
 		}
 	};
 
@@ -442,7 +496,7 @@ RB.Scene = function(canvasObj, loopTime) {
 			var theScene = this;
 			setTimeout(function() {
 				theScene.animate();
-			}, timeInterval);
+			}, this.timeInterval);
 		}
 	};
 	
@@ -457,15 +511,6 @@ RB.Scene = function(canvasObj, loopTime) {
 		}
 	};
 
-	/* setters and getters */
-	this.getW = function() {
-		return w;
-	};
-	
-	this.getH = function() {
-		return h;
-	};
-
 	// method executed after all images are buffered and loaded
 	this.doAfterLoad = function() {
 	};
@@ -478,34 +523,33 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 		throw "RB.Obj(c, sceneContext, _x, _y): You must specify a scene context";
 	}
 
-	var uniqueId = Math.random();
-	var name = "";
+	var id = Math.random();
 	var sCtx = sceneContext;
 	var ctx = null;
 	var canvas = null;
-	var x = 0;
-	var y = 0;
-	var w = 0;
-	var h = 0;
+	this.x = 0;
+	this.y = 0;
+	this.w = 0;
+	this.h = 0;
 	
-	if(_x) x = _x;
-	if(_y) y = _y;
+	if(_x) this.x = _x;
+	if(_y) this.y = _y;
 	
 	//tells the scene if the object should be read or not
 	//which means, if the object is visible for the scene
 	//if set to true, the scene will ignore the object and will not
 	//run it
-	var visible = true;
+	this.visible = true;
 
 	// sets if this object should respect collision system
-	var collidable = false;
+	this.collidable = false;
 
 	// sets if this object is an obstacle
 	// obstacles collide but they dont check anything
 	// only non obstacles should check for collisions
-	var obstacle = false;
-	var colliding = false;
-	var collidingCoords = null;
+	this.obstacle = false;
+	this.colliding = false;
+	this.collidingCoords = null;
 	
 	/*
 	used by collision system
@@ -516,24 +560,16 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	*/
 	var lastDirection = null;
 	
-	var draggable = false;
+	this.draggable = false;
 
-	var speedX = 1;
-	var speedY = 1;
-
-	var counter = 0;
+	this.speedX = 1;
+	this.speedY = 1;
 
 	// array containing list of sprites for object animation
 	var sprites = null;
 
 	// number of loops before changing sprite image
-	var spriteChangeInterval = 1;
-	this.setSpriteInterval = function(p) {
-		spriteChangeInterval = p;
-	};
-	this.getSpriteInterval = function() {
-		return spriteChangeInterval;
-	};
+	this.spriteChangeInterval = 1;
 
 	// counts if spriteChangeInterval reached its goal
 	var spriteCounter = 0;
@@ -545,16 +581,16 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	this.setCanvas = function(p) {
 		canvas = (typeof p == 'object' ? p : RB.el(p));
 
-		w = canvas.width;
-		h = canvas.height;
+		this.w = canvas.width;
+		this.h = canvas.height;
 	};
 	
 	this.setCoords = function(_x, _y){
-		x = _x; y = _y;
+		this.x = _x; this.y = _y;
 	};
 	
 	this.setDimension = function(_w, _h){
-		w = _w; h = _h;
+		this.w = _w; this.h = _h;
 	};
 	
 	this.setCanvas(c);
@@ -563,8 +599,8 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 		return canvas;
 	};
 
-	this.getUniqueId = function() {
-		return uniqueId;
+	this.getId = function() {
+		return id;
 	};
 
 	this.setSCtx = function(p) {
@@ -581,119 +617,23 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 		return ctx;
 	};
 
-	this.setX = function(p) {
-		x = p;
-	};
-	this.getX = function() {
-		return x;
-	};
-
-	this.setY = function(p) {
-		y = p;
-	};
-	this.getY = function() {
-		return y;
-	};
-	
 	this.setXY = function(p, q){
-		x=p; y=q;
+		this.x=p; this.y=q;
 	};
 
-	this.setW = function(p) {
-		w = p;
-	};
-	this.getW = function() {
-		return w;
-	};
-
-	this.setH = function(p) {
-		h = p;
-	};
-	this.getH = function() {
-		return h;
-	};
-
-	this.setCounter = function(p) {
-		counter = p;
-	};
-	this.getCounter = function() {
-		return counter;
-	};
-
-	this.setSpeedX = function(p) {
-		speedX = p;
-	};
-	this.getSpeedX = function() {
-		return speedX;
-	};
-
-	this.setSpeedY = function(p) {
-		speedY = p;
-	};
-	
-	this.getSpeedY = function() {
-		return speedY;
-	};
-	
 	this.setSpeed = function(p){
-		speedX = p;
-		speedY = p;
+		this.speedX = p;
+		this.speedY = p;
 	};
 	
-	this.setCollidable = function(p) {
-		collidable = p;
-	};
-	this.isCollidable = function() {
-		return collidable;
-	};
-
-	this.setObstacle = function(p) {
-		obstacle = p;
-	};
-	this.isObstacle = function() {
-		return obstacle;
-	};
-
-	this.setDraggable = function(p) {
-		draggable = p;
-	};
-	this.isDraggable = function() {
-		return draggable;
-	};
-	
-	this.setName = function(p) {
-		name = p;
-	};
-	this.getName = function() {
-		return name;
-	};
-
-	this.setIsColliding = function(p) {
-		colliding = p;
-	};
-	this.isColliding = function() {
-		return colliding;
-	};
-	
-	this.setCollidingCoords = function(cc){
-		collidingCoords = cc;
-	};
-	
-	this.getCollidingCoords = function(){
-		return collidingCoords;
-	};
-
 	this.getX2 = function() {
-		return x+w;
+		return this.x + this.w;
 	};
 	
 	this.getY2 = function() {
-		return y+h;
+		return this.y + this.h;
 	};
 	
-	this.setVisible = function(p){visible=p;};
-	this.isVisible = function(){return visible;};
-
 	this.fn = function() {
 		this.draw();
 	};
@@ -705,19 +645,18 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	// clones the object and returns a new instance of it
 	this.clone = function() {
 		var o = new RB.Obj(c, sCtx);
-		o.setX(x);
-		o.setY(y);
-		o.setW(w);
-		o.setH(h);
-		o.setCollidable(collidable);
-		o.setObstacle(obstacle);
-		o.setCounter(counter);
+		o.x = this.x;
+		o.y = this.y;
+		o.w = this.w;
+		o.h = this.h;
+		o.collidable = this.collidable;
+		o.obstacle = this.obstacle;
 		o.fn = this.fn;
-		o.setSpeedX(speedX);
-		o.setSpeedY(speedY);
-		o.setSprites(sprites, this.getSpriteInterval());
-		o.setDraggable(draggable);
-		o.setVisible(visible);
+		o.speedX = this.speedX;
+		o.speedY = this.speedY;
+		o.setSprites(sprites, this.spriteChangeInterval);
+		o.draggable = this.draggable;
+		o.visible = this.visible;
 
 		return o;
 	};
@@ -725,33 +664,33 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	// facade for ctx.drawImage
 	this.draw = function(w, h) {
 		if (w && h) {
-			sCtx.drawImage(canvas, x, y, w, h);
+			sCtx.drawImage(canvas, this.x, this.y, w, h);
 		} else {
-			sCtx.drawImage(canvas, x, y);
+			sCtx.drawImage(canvas, this.x, this.y);
 		}
 	};
 
 	// moves the object up
 	this.up = function(p) {
-		y -= p || speedY;
+		this.y -= p || this.speedY;
 		lastDirection = 'up';
 	};
 
 	// moves the object down
 	this.down = function(p) {
-		y += p || speedY;
+		this.y += p || this.speedY;
 		lastDirection = 'down';
 	};
 
 	// moves the object to left
 	this.left = function(p) {
-		x -= p || speedX;
+		this.x -= p || this.speedX;
 		lastDirection = 'left';
 	};
 
 	// moves the object to right
 	this.right = function(p) {
-		x += p || speedX;
+		this.x += p || this.speedX;
 		lastDirection = 'right';
 	};
 
@@ -778,16 +717,16 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	};
 
 	this.checkCollision = function(otherObj, predict) {
-		var x1 = otherObj.getX();
-		var y1 = otherObj.getY();
+		var x1 = otherObj.x;
+		var y1 = otherObj.y;
 		var x2 = otherObj.getX2();
 		var y2 = otherObj.getY2();
 		
 		if(predict){
-			x1 -= speedX;
-			y1 -= speedY;
-			x2 -= speedX;
-			y2 -= speedY;
+			x1 -= this.speedX;
+			y1 -= this.speedY;
+			x2 += this.speedX;
+			y2 += this.speedY;
 		}
 		
 		var collisions = {
@@ -798,50 +737,67 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 		};
 		
 		//checks which way I should look for collisions
-		
 		if(lastDirection=='up'){
-			//means i must check if i hit something above me
-			var yCase = y < y2 && (y+h) > y2;
-			var xCase = x < x2 && (x+w) > x1;
-			if( yCase && xCase ){
-				collisions['top'] = true;
-			}
+			collisions['top'] = upCheck(x1, y1, x2, y2);
+			collisions['left'] = leftCheck(x1, y1, x2, y2);
+			collisions['right'] = rightCheck(x1, y1, x2, y2);
 		}
 		
 		if(lastDirection=='down'){
-			//means i must check if i hit something below me
-			var yCase = (y+h) > y1 && (y+h) < y2;
-			var xCase = x < x2 && (x+w) > x1;
-			if( yCase && xCase ){
-				collisions['bottom'] = true;
-			}
-		}
-		
-		if(lastDirection=='left'){
-			//means i must check if i hit something on my left side
-			var yCase = y < y2 && (y+h) > y1;
-			var xCase = x < x2 && (x+w) > x2;
-			if( yCase && xCase ){
-				collisions['left'] = true;
-			}
+			collisions['bottom'] = bottomCheck(x1, y1, x2, y2);
+			collisions['left'] = leftCheck(x1, y1, x2, y2);
+			collisions['right'] = rightCheck(x1, y1, x2, y2);
 		}
 		
 		if(lastDirection=='right'){
-			//means i must check if i hit something on my right side
-			var yCase = y < y2 && (y+h) > y1;
-			var xCase = (x+w) > x1 && (x+w) < x2;
-			if( yCase && xCase ){
-				collisions['right'] = true;
-			}
+			collisions['right'] = rightCheck(x1, y1, x2, y2);
+			collisions['top'] = upCheck(x1, y1, x2, y2);
+			collisions['bottom'] = bottomCheck(x1, y1, x2, y2);
+		}
+		
+		if(lastDirection=='left'){
+			collisions['left'] = leftCheck(x1, y1, x2, y2);
+			collisions['top'] = upCheck(x1, y1, x2, y2);
+			collisions['bottom'] = bottomCheck(x1, y1, x2, y2);
 		}
 		
 		return collisions;
 	};
 	
+	var theObject = this;
+	var leftCheck = function(x1, y1, x2, y2){
+		//means i must check if I hit something on my left side
+		var yCase = theObject.y < y2 && (theObject.y + theObject.h) > y1;
+		var xCase = theObject.x < x2 && (theObject.x + theObject.w) > x2;
+		return yCase && xCase;
+	};
+	
+	var rightCheck = function(x1, y1, x2, y2){
+		//means i must check if i hit something on my right side
+		var yCase = theObject.y < y2 && (theObject.y + theObject.h) > y1;
+		var xCase = (theObject.x + theObject.w) > x1 && (theObject.x + theObject.w) < x2;
+		return yCase && xCase;
+	};
+
+	var upCheck = function(x1, y1, x2, y2){
+		//means i must check if i hit something above me
+		var yCase = theObject.y < y2 && (theObject.y + theObject.h) > y2;
+		var xCase = theObject.x < x2 && (theObject.x + theObject.w) > x1;
+		return yCase && xCase;
+	};
+
+	var bottomCheck = function(x1, y1, x2, y2){
+		//means i must check if i hit something below me
+		var yCase = (theObject.y + theObject.h) > y1 && (theObject.y + theObject.h) < y2;
+		var xCase = theObject.x < x2 && (theObject.x + theObject.w) > x1;
+		return yCase && xCase;
+	};
+
+	
 	//returns true if rx and ry are inside the objects area
 	this.checkRange = function(rx, ry){
-		var xRange = rx >= x && rx <= (x + w);
-		var yRange = ry >= y && ry <= (y + h);
+		var xRange = rx >= this.x && rx <= (this.x + this.w);
+		var yRange = ry >= this.y && ry <= (this.y + this.h);
 		
 		return xRange && yRange;
 	};

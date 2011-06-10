@@ -7,7 +7,10 @@
 <style type="text/css">
 canvas{
 	border:1px solid black;
+	font-family:'times';
+	font-size:30px;
 }
+
 </style>
 </head>
 <body>
@@ -31,21 +34,21 @@ var tm = RB.el('tempo');
 
 var c = RB.el('c');
 var sceneCtx = c.getContext('2d');
-var sc = new RB.Scene(c);
+var sc = new RB.Scene(c, 24);
 sc.rect(400, 400, 'gray', 'bg');
 var bg = new RB.Obj('bg', sceneCtx);
-sc.add(bg);
 
 sc.text('0', 'arial', 20, colorSettings, 'tempo');
 var t = new RB.Obj('tempo', sceneCtx, 60, 350);
-sc.add(t);
+t.collidable=true;
+t.obstacle=true;
 
 sc.onLoop = function(){
 	loopCount++;
 	
 	if(loopCount == ~~(1000/24)){
 		tempo++;
-		sc.text(tempo, 'arial', 20, colorSettings, 'tempo');
+		sc.text(tempo, 'times', 20, colorSettings, 'tempo');
 		t.setCanvas('tempo');
 		
 		loopCount = 0;
@@ -54,31 +57,30 @@ sc.onLoop = function(){
 
 sc.roundRect(25, 25, 5, 'orange', 'rr');
 var rr = new RB.Obj('rr', sceneCtx, 190);
-rr.setCollidable(true);
-rr.setSpeedY(5);
+rr.collidable=true;
+rr.speedY=5;
 
 rr.fn = function(){
-	if( !this.isColliding() ){
+	if( !this.colliding ){
 		this.down();
 	} else {
 		//this.left();
-		if(!this.getCollidingCoords().bottom){
-			this.down();
+		if(!this.collidingCoords.bottom){
+			//this.down();
 		}
 	}
 	
 	this.draw();
 }
-sc.add(rr);
 
 var rr2 = rr.clone();
-rr2.setX(90);
-rr2.setSpeedY(1);
-sc.add(rr2);
+rr2.x=(90);
+rr2.speedY=(1);
+rr2.draggable=(true);
 
 sc.rect(400, 20, 'rgba(255, 255, 255, 0.5)', 'chao');
 sc.rect(100, 20, 'rgba(255, 255, 255, 0.5)', 'chao2');
-sc.rect(100, 20, 'blue', 'bloco');
+sc.rect(100, 20, colorSettings, 'bloco');
 sc.roundRect(30, 30, 5, 'rgba(255, 255, 255, 0.88)', 'peca');
 
 var ball;
@@ -88,14 +90,14 @@ RB.rtImage('btn_alerta_verde.png', 'ball', function(){
 	ball = new RB.Obj('ball', sceneCtx, 20);
 	ball.setSprites([ RB.el('ball'), RB.el('ball2')], 5);
 	
-	ball.setCollidable(true);
-	ball.setDraggable(true);
-	ball.setSpeedY(4);
+	ball.collidable=(true);
+	ball.draggable=(true);
+	ball.speedY=(4);
 
 	ball.fn = function(){
 		this.animateSprite();
 		
-		if( !this.isColliding() ){
+		if( !this.colliding ){
 			this.down();
 		}
 		
@@ -105,24 +107,23 @@ RB.rtImage('btn_alerta_verde.png', 'ball', function(){
 });
 
 var chao = new RB.Obj('chao', sceneCtx, null, 380);
-chao.setCollidable(true);
-chao.setName('chao');
-chao.setObstacle(true);
-sc.add(chao);
+chao.collidable=(true);
+chao.obstacle=(true);
 
 var bloco = new RB.Obj('bloco', sceneCtx, 100, 20);
-bloco.setDraggable(true);
-bloco.setCollidable(true);
-sc.add(bloco);
+bloco.draggable=(true);
+bloco.collidable=(true);
 
 var peca = new RB.Obj('peca', sceneCtx, 10, 10);
-peca.setCollidable(true);
-peca.setObstacle(true);
-sc.add(peca);
+peca.collidable=(true);
+peca.obstacle=(true);
+
+sc.addLots([bg, t, rr, rr2, chao, bloco, peca]);
+sc.zIndex(bloco, -3);
 
 sc.onmousemove = function(event){
-	peca.setX( RB.xPos(event) - (peca.getW()/2) );
-	peca.setY( RB.yPos(event) - (peca.getH()/2) );
+	peca.x=( RB.xPos(event) - (peca.w/2) );
+	peca.y=( RB.yPos(event) - (peca.h/2) );
 }
 
 </script>
