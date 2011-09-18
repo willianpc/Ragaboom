@@ -37,8 +37,6 @@ RB.Scene = function(canvasObj, loopTime) {
 	this.timeInterval = loopTime;
 	var c = canvasObj;
 	var d = document;
-	//var w = c.width;
-	//var h = c.height;
 	this.ctx = c.getContext('2d');
 	var objects = [];
 	
@@ -72,6 +70,12 @@ RB.Scene = function(canvasObj, loopTime) {
 
 	// number of loaded images which are attached to the scene
 	var imgCounter = 0;
+	
+	var divIdCounter = 0;
+	
+	this.genID = function(){
+		return 'RB_OBJECT' + (divIdCounter++);
+	}	
 	
 	// attaches the object to the scene object
 	this.add = function(o) {
@@ -278,6 +282,10 @@ RB.Scene = function(canvasObj, loopTime) {
 			var o = draggableObjects[i];
 
 			if( o.checkRange(RB.xPos(event), RB.yPos(event)) ){
+			
+				//mouse events for objects go here
+				o.onmousedown(event);
+			
 				currentObject = o;
 				currentObjectIndex = i;
 				
@@ -299,29 +307,50 @@ RB.Scene = function(canvasObj, loopTime) {
 
 	// draws a rectangle inside a buffer canvas
 	this.rect = function(w, h, fillStyle, id) {
+		var theScene = this;
+		id = id || theScene.genID();
 		var c = RB.createCanvas(w, h, id);
 		var ctx = c.getContext('2d');
 		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
 		ctx.fillRect(0, 0, w, h);
 		
-		return c;
+		return rectObj = new RB.Obj(c, this.ctx);
 	};
 
 	// load an image inside a buffer canvas
-	this.image = function(url, id) {
+	//and return it in a RB.Obj
+	this.image = function(url, cb, id) {
 		var img = new Image();
 		var theScene = this;
 		var c = null;
 		img.onload = function() {
+			id = id || theScene.genID();
 			c = RB.createCanvas(img.width, img.height, id);
 			var ctx = c.getContext('2d');
 			ctx.drawImage(this, 0, 0);
-
 			imgCounter++;
+			
+			var obj = new RB.Obj(c, theScene.ctx);
+			cb(obj);
+		};
+		img.src = url;
+		imgNum++;
+	};
 
-			if (imgCounter == imgNum) {
-				theScene.doAfterLoad();
-			}
+	// load an image inside a buffer canvas
+	//and returns the canvas DOM
+	this.loadImage = function(url, id, cb) {
+		var img = new Image();
+		var theScene = this;
+		var c = null;
+		img.onload = function() {
+			id = id || theScene.genID();
+			c = RB.createCanvas(img.width, img.height, id);
+			var ctx = c.getContext('2d');
+			ctx.drawImage(this, 0, 0);
+			imgCounter++;
+			
+			cb(c);
 		};
 		img.src = url;
 		imgNum++;
@@ -332,6 +361,7 @@ RB.Scene = function(canvasObj, loopTime) {
 		var img = new Image();
 		var theScene = this;
 		img.onload = function() {
+			id = id || theScene.genID();
 			var c = RB.createCanvas(w, h, id);
 			var ctx = c.getContext('2d');
 			var fs = ctx.createPattern(img, patternType);
@@ -350,11 +380,14 @@ RB.Scene = function(canvasObj, loopTime) {
 
 	this.roundRect = function(w, h, arco, fillStyle, id) {
 		
-		if(!w || !h || !arco || !fillStyle || !id){
+		if(!w || !h || !arco || !fillStyle){
 			throw "All parameters must be set: roundRect(w, h, arc, fillStyle, id);";
 		}
+		var theScene = this;
 		
+		id = id || theScene.genID();
 		var c = RB.createCanvas(w, h, id);
+		
 		var ctx = c.getContext('2d');
 		var x = 0, y = 0;
 
@@ -373,12 +406,14 @@ RB.Scene = function(canvasObj, loopTime) {
 		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
 		ctx.fill();
 		
-		return c;
+		return new RB.Obj(c, theScene.ctx);
 	};
 
 	// draws a text inside a buffer canvas
 	this.text = function(str, fontFamily, fontSize, fillStyle, id) {
 		var tb = RB.getTextBuffer();
+		var theScene = this;
+		id = id || theScene.genID();
 		
 		tb.innerHTML = str;
 		tb.style.fontFamily = fontFamily;
@@ -405,7 +440,9 @@ RB.Scene = function(canvasObj, loopTime) {
 		ctx.font = 'normal ' + fontSize + 'px ' + fontFamily;
 		ctx.fillText(str, 0, tb.offsetHeight + 5);
 		
-		return c;
+		var obj = new RB.Obj(c, theScene.ctx);
+		
+		return obj;
 	};
 
 	this.start = function() {
@@ -426,6 +463,7 @@ RB.Scene = function(canvasObj, loopTime) {
 	//this is all the logic when a scene starts running
 	//it is separated from animate method so that it can be used in other cases
 	this.runOnce = function(){
+		this.ctx.restore();
 		var objectLen = objects.length;
 		var colObjectsLen = colObjects.length;
 
@@ -463,26 +501,31 @@ RB.Scene = function(canvasObj, loopTime) {
 				}
 			}
 			
-			//check if object is movable
-			var anyArrowIsPressed = leftP || rightP || downP || topP;
-			if(otmp.getId() == movableObjectId && anyArrowIsPressed){
-			
-				//check coordinate collisions
-				var lc=false, rc=false, tc=false, dc=false;
-				var cc = otmp.collidingCoords;
-				if(cc){
-					lc = cc.left;
-					rc = cc.right;
-					tc = cc.top;
-					dc = cc.bottom;
-				}
-			
-				if(leftP && !lc) otmp.left();
-				if(rightP && !rc) otmp.right();
-				if(topP && !tc) otmp.up();
-				if(downP && !dc) otmp.down();
-			}
+			moveOrCollide(otmp);
 
+		}
+		this.ctx.save();
+	};
+	
+	var moveOrCollide = function(obj){
+		//check if object is movable
+		var anyArrowIsPressed = leftP || rightP || downP || topP;
+		if(obj.getId() == movableObjectId && anyArrowIsPressed){
+		
+			//check coordinate collisions
+			var lc=false, rc=false, tc=false, dc=false;
+			var cc = obj.collidingCoords;
+			if(cc){
+				lc = cc.left;
+				rc = cc.right;
+				tc = cc.top;
+				dc = cc.bottom;
+			}
+		
+			if(leftP && !lc)obj.left();
+			if(rightP && !rc)obj.right();
+			if(topP && !tc) obj.up();
+			if(downP && !dc) obj.down();
 		}
 	};
 
@@ -534,6 +577,8 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	
 	if(_x) this.x = _x;
 	if(_y) this.y = _y;
+	
+	this.onmousedown = function(e){};
 	
 	//tells the scene if the object should be read or not
 	//which means, if the object is visible for the scene
@@ -660,14 +705,32 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 
 		return o;
 	};
+	
+	//state is used to determine if the object changed since the last time
+	//it was drawn on canvas. If state changed, that means the object must be
+	//repainted in the screen. If it didnt change the context.restore will
+	//take care of the job.
+	function updateState(){
+
+		return this.x + ', ' + this.y + ', ' + this.w + ', ' + this.h + ', ' + 
+		this.visible + ', ' + this.collidable + ', ' + this.obstacle + ', ' + 
+		this.colliding + ', ' + this.collidingCoords + ', ' + this.speedX + 
+		', ' + this.speedY + ', ' + this.spriteChangeInterval;
+	}
 
 	// facade for ctx.drawImage
 	this.draw = function(w, h) {
-		if (w && h) {
-			sCtx.drawImage(canvas, this.x, this.y, w, h);
-		} else {
-			sCtx.drawImage(canvas, this.x, this.y);
+	
+		try{
+			if (w && h) {
+				sCtx.drawImage(canvas, this.x, this.y, w, h);
+			} else {
+				sCtx.drawImage(canvas, this.x, this.y);
+			}
+		} catch(e){
+			throw e;
 		}
+		
 	};
 
 	// moves the object up
@@ -767,53 +830,40 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	var theObject = this;
 	var leftCheck = function(x1, y1, x2, y2){
 		//means i must check if I hit something on my left side
-		var yCase = theObject.y < y2 && (theObject.y + theObject.h) > y1;
-		var xCase = theObject.x < x2 && (theObject.x + theObject.w) > x2;
+		var yCase = theObject.y < y2 && theObject.getY2() > y1;
+		var xCase = theObject.x < x2 && theObject.getX2() > x2;
 		return yCase && xCase;
 	};
 	
 	var rightCheck = function(x1, y1, x2, y2){
 		//means i must check if i hit something on my right side
-		var yCase = theObject.y < y2 && (theObject.y + theObject.h) > y1;
-		var xCase = (theObject.x + theObject.w) > x1 && (theObject.x + theObject.w) < x2;
+		var yCase = theObject.y < y2 && theObject.getY2() > y1;
+		var xCase = theObject.getX2() > x1 && theObject.getX2() < x2;
 		return yCase && xCase;
 	};
 
 	var upCheck = function(x1, y1, x2, y2){
 		//means i must check if i hit something above me
-		var yCase = theObject.y < y2 && (theObject.y + theObject.h) > y2;
-		var xCase = theObject.x < x2 && (theObject.x + theObject.w) > x1;
+		var yCase = theObject.y < y2 && theObject.getY2() > y2;
+		var xCase = theObject.x < x2 && theObject.getX2() > x1;
 		return yCase && xCase;
 	};
 
 	var bottomCheck = function(x1, y1, x2, y2){
 		//means i must check if i hit something below me
-		var yCase = (theObject.y + theObject.h) > y1 && (theObject.y + theObject.h) < y2;
-		var xCase = theObject.x < x2 && (theObject.x + theObject.w) > x1;
+		var yCase = theObject.getY2() > y1 && theObject.getY2() < y2;
+		var xCase = theObject.x < x2 && theObject.getX2() > x1;
 		return yCase && xCase;
 	};
 
-	
 	//returns true if rx and ry are inside the objects area
 	this.checkRange = function(rx, ry){
-		var xRange = rx >= this.x && rx <= (this.x + this.w);
-		var yRange = ry >= this.y && ry <= (this.y + this.h);
+		var xRange = rx >= this.x && rx <= this.getX2();
+		var yRange = ry >= this.y && ry <= this.getY2();
 		
 		return xRange && yRange;
 	};
 
-	// the event fired when a colision is detected
-	// you do whatever you want here
-	this.onCollide = function() {
-	};
-	
-	this.onNonCollide = function() {
-	};
-
-	// fires the onColide function
-	this.boom = function() {
-		this.onCollide();
-	};
 };
 
 // this is the div responsible to calculate canvas dimensions
