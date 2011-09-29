@@ -304,15 +304,26 @@ RB.Scene = function(canvasObj, loopTime) {
 	this.getObj = function(index) {
 		return objects[index];
 	};
-
+	
 	// draws a rectangle inside a buffer canvas
-	this.rect = function(w, h, fillStyle, id) {
+	this.rect = function(w, h, fillStyle, id, strokeStyle) {
 		var theScene = this;
 		id = id || theScene.genID();
 		var c = RB.createCanvas(w, h, id);
 		var ctx = c.getContext('2d');
-		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
-		ctx.fillRect(0, 0, w, h);
+		
+		if(fillStyle){
+			ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
+			ctx.fillRect(0, 0, w, h);
+		}
+		
+		if(strokeStyle){
+			var lw = strokeStyle.lineWidth || 1;
+			ctx.lineWidth = strokeStyle.lineWidth;
+			ctx.strokeStyle = strokeStyle.strokeStyle;
+			ctx.rect(0+lw, 0+lw, w-lw-lw, h-lw-lw);
+			ctx.stroke();
+		}
 		
 		return rectObj = new RB.Obj(c, this.ctx);
 	};
@@ -378,11 +389,8 @@ RB.Scene = function(canvasObj, loopTime) {
 		imgNum++;
 	};
 
-	this.roundRect = function(w, h, arco, fillStyle, id) {
+	this.roundRect = function(w, h, arco, fillStyle, id, strokeStyle) {
 		
-		if(!w || !h || !arco || !fillStyle){
-			throw "All parameters must be set: roundRect(w, h, arc, fillStyle, id);";
-		}
 		var theScene = this;
 		
 		id = id || theScene.genID();
@@ -403,8 +411,19 @@ RB.Scene = function(canvasObj, loopTime) {
 		ctx.lineTo(x, y + arco);
 		ctx.quadraticCurveTo(x, y, x + arco, y);
 		ctx.closePath();
-		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
-		ctx.fill();
+		
+		if(fillStyle){
+			ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
+			ctx.fill();
+		}
+		
+		if(strokeStyle){
+			var lw = strokeStyle.lineWidth || 1;
+			ctx.lineWidth = strokeStyle.lineWidth;
+			ctx.strokeStyle = strokeStyle.strokeStyle;
+			//ctx.rect(0+lw, 0+lw, w-lw-lw, h-lw-lw);
+			ctx.stroke();
+		}
 		
 		return new RB.Obj(c, theScene.ctx);
 	};
@@ -468,6 +487,7 @@ RB.Scene = function(canvasObj, loopTime) {
 		var colObjectsLen = colObjects.length;
 
 		for (var i = 0; i < objectLen; i++) {
+		//for (var i = objectLen; i >= 0; i--) {
 			var otmp = objects[i];
 
 			if(otmp.visible) {
@@ -577,6 +597,9 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	
 	if(_x) this.x = _x;
 	if(_y) this.y = _y;
+	
+	this.w = c.width;
+	this.h = c.height;
 	
 	this.onmousedown = function(e){};
 	
@@ -725,7 +748,7 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 			if (w && h) {
 				sCtx.drawImage(canvas, this.x, this.y, w, h);
 			} else {
-				sCtx.drawImage(canvas, this.x, this.y);
+				sCtx.drawImage(canvas, this.x, this.y, this.w, this.h);
 			}
 		} catch(e){
 			throw e;
