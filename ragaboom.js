@@ -89,8 +89,9 @@ RB.Scene = function(canvasObj, loopTime) {
 
 		// adds the object on a separate 
 		// array if it is set to collision
-		if (o.collidable)
+		if (o.collidable) {
 			colObjects.push(o);
+		}
 		
 		// adds the object on a separate 
 		// array if it is draggable
@@ -214,7 +215,7 @@ RB.Scene = function(canvasObj, loopTime) {
 	
 	//gets the keys pressed. its used on the movable object
 	var getKeyDirection = function(e, b){
-		var k = e.keyCode;
+		var k = e.keyCode || e.which;
 	
 		switch(k){
 			case 37:
@@ -258,7 +259,7 @@ RB.Scene = function(canvasObj, loopTime) {
 	};
 	
 	//event methods
-	var mouseMove = function(event){
+	var mouseMove = function(event) {
 		if(mouseIsDown && currentObject) {
 			currentObject.x = (RB.xPos(event) - dX);
 			currentObject.y = (RB.yPos(event) - dY);
@@ -307,6 +308,7 @@ RB.Scene = function(canvasObj, loopTime) {
 	
 	// draws a rectangle inside a buffer canvas
 	this.rect = function(w, h, fillStyle, id, strokeStyle) {
+		/*
 		var theScene = this;
 		id = id || theScene.genID();
 		var c = RB.createCanvas(w, h, id);
@@ -326,24 +328,29 @@ RB.Scene = function(canvasObj, loopTime) {
 		}
 		
 		return rectObj = new RB.Obj(c, this.ctx);
+		*/
+		var c = RB.createCanvas(w, h, id);
+		var ctx = c.getContext('2d');
+		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
+		ctx.fillRect(0, 0, w, h);
+		return c;
 	};
 
 	// load an image inside a buffer canvas
 	//and return it in a RB.Obj
-	this.image = function(url, cb, id) {
+	this.image = function(url, id) {
 		var img = new Image();
 		var theScene = this;
 		var c = null;
 		img.onload = function() {
-			id = id || theScene.genID();
 			c = RB.createCanvas(img.width, img.height, id);
 			var ctx = c.getContext('2d');
 			ctx.drawImage(this, 0, 0);
 			imgCounter++;
 			
-			var obj = new RB.Obj(c, theScene.ctx);
-			cb(obj);
+			imgCounter == imgNum && theScene.doAfterLoad();
 		};
+
 		img.src = url;
 		imgNum++;
 	};
@@ -389,18 +396,17 @@ RB.Scene = function(canvasObj, loopTime) {
 		imgNum++;
 	};
 
-	this.roundRect = function(w, h, arco, fillStyle, id, strokeStyle) {
+	this.roundRect = function(w, h, arco, fillStyle, id) {
 		
-		var theScene = this;
+		if(!w || !h || !arco || !fillStyle || !id) {
+			throw "All parameters must be set: roundRect(w, h, arc, fillStyle, id);";
+		}
 		
-		id = id || theScene.genID();
 		var c = RB.createCanvas(w, h, id);
-		
 		var ctx = c.getContext('2d');
 		var x = 0, y = 0;
 
 		ctx.beginPath();
-
 		ctx.moveTo(x + arco, y);
 		ctx.lineTo(w + x - arco, y);
 		ctx.quadraticCurveTo(w + x, y, w + x, y + arco);
@@ -411,28 +417,37 @@ RB.Scene = function(canvasObj, loopTime) {
 		ctx.lineTo(x, y + arco);
 		ctx.quadraticCurveTo(x, y, x + arco, y);
 		ctx.closePath();
-		
-		if(fillStyle){
-			ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
-			ctx.fill();
-		}
-		
-		if(strokeStyle){
-			var lw = strokeStyle.lineWidth || 1;
-			ctx.lineWidth = strokeStyle.lineWidth;
-			ctx.strokeStyle = strokeStyle.strokeStyle;
-			//ctx.rect(0+lw, 0+lw, w-lw-lw, h-lw-lw);
-			ctx.stroke();
-		}
-		
-		return new RB.Obj(c, theScene.ctx);
+		ctx.fillStyle = RB.getFS(fillStyle, ctx, h);
+		ctx.fill();
+		return c;
 	};
 
 	// draws a text inside a buffer canvas
 	this.text = function(str, fontFamily, fontSize, fillStyle, id) {
+
+
+        var d = RB.getTextBuffer();
+        d.innerHTML = str;
+        d.style.fontFamily = fontFamily;
+        d.style.fontSize = fontSize + "px";
+        var h = RB.el(id);
+
+        h ? (id = h.getContext("2d"), h.width = d.offsetWidth,
+        h.height = d.offsetHeight + 15,
+        id.clearRect(0, 0, d.offsetWidth, d.offsetHeight + 15)) : 
+
+        (h = RB.createCanvas(d.offsetWidth, d.offsetHeight + 15, id),
+        id = h.getContext("2d"));
+        id.fillStyle = RB.getFS(fillStyle, id, d.offsetHeight + 25);
+        id.font = "normal " + fontSize + "px " + fontFamily;
+        id.fillText(str, 0, d.offsetHeight + 5);
+        return h;
+
+
+		/*
 		var tb = RB.getTextBuffer();
-		var theScene = this;
-		id = id || theScene.genID();
+		//var theScene = this;
+		//id = id || theScene.genID();
 		
 		tb.innerHTML = str;
 		tb.style.fontFamily = fontFamily;
@@ -462,6 +477,7 @@ RB.Scene = function(canvasObj, loopTime) {
 		var obj = new RB.Obj(c, theScene.ctx);
 		
 		return obj;
+		*/
 	};
 
 	this.start = function() {
@@ -568,6 +584,7 @@ RB.Scene = function(canvasObj, loopTime) {
 	//same time as .animate :/
 	this.update = function() {
 		var objectLen = objects.length;
+
 		for ( var i = 0; i < objectLen; i++) {
 			var otmp = objects[i];
 			otmp.run();
@@ -733,7 +750,7 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 	//it was drawn on canvas. If state changed, that means the object must be
 	//repainted in the screen. If it didnt change the context.restore will
 	//take care of the job.
-	function updateState(){
+	function updateState() {
 
 		return this.x + ', ' + this.y + ', ' + this.w + ', ' + this.h + ', ' + 
 		this.visible + ', ' + this.collidable + ', ' + this.obstacle + ', ' + 
@@ -743,17 +760,15 @@ RB.Obj = function(c, sceneContext, _x, _y) {
 
 	// facade for ctx.drawImage
 	this.draw = function(w, h) {
-	
-		try{
+		try {
 			if (w && h) {
 				sCtx.drawImage(canvas, this.x, this.y, w, h);
 			} else {
-				sCtx.drawImage(canvas, this.x, this.y, this.w, this.h);
+				sCtx.drawImage(canvas, this.x, this.y);
 			}
-		} catch(e){
+		} catch(e) {
 			throw e;
 		}
-		
 	};
 
 	// moves the object up

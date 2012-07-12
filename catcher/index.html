@@ -1,3 +1,4 @@
+
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
 <html>
 <head>
@@ -19,7 +20,23 @@ canvas{
 </canvas>
 </center>
 
-<script type="text/javascript" src="../../ragaboom.js"></script>
+<div id="log">
+	Hello, this is my first attempt to make a game.<br/>
+	It was built using Javascript and a new HTML5 feature called &lt;canvas&gt;, and that's why it only works in modern browers like Firefox, Chrome or Internet Explorer 9  <br/>
+	
+	It is a very simple casual game. If you enjoyed it, hated it or have any suggestions, please contact me:</br>
+	<ul>
+		<li>E-mail: <a href='mailto:o.chambs@gmail.com'>o.chambs@gmail.com</a></li>
+		<li>Blog: <a href='http://jscode.blogspot.com'>http://jscode.blogspot.com</a></li>
+		<li><a href='http://www.facebook.com/profile.php?id=100000426727372'>Facebook</a></li>
+		<li><a href='http://br.linkedin.com/in/wcarvalho'>Linkedin</a></li>
+		<li><a href="https://github.com/chambs/Ragaboom">GitHub</a></li>
+	</ul>
+	
+	
+</div>
+
+<script type="text/javascript" src="../ragaboom.js"></script>
 <script type="text/javascript" src="catcher.js"></script>
 
 <script type="text/javascript">
@@ -144,7 +161,15 @@ function showWelcomeScreen(){
 
 var fpts = new Array(11);
 
-function startGame(){
+var shouldReset = false;
+function startGame() {
+
+    if(shouldReset) {
+        return location.reload();
+    }
+    
+    shouldReset = true;
+
 	sc.removeLots([welcomeScreen, gameTitle, txtInstructions, txtins1, txtins2, txtins3]);
 	sc.add(basket);
 	
@@ -245,5 +270,15 @@ function addZero(n){
 	return n;
 }
 </script>
+<script type="text/javascript">
+var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+</script>
+<script type="text/javascript">
+try {
+var pageTracker = _gat._getTracker("UA-11163941-2");
+pageTracker._trackPageview();
+} catch(err) {}</script>
+
 </body>
 </html>
